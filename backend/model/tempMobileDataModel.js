@@ -5,20 +5,14 @@ const UploadedLink = require("./uploadedLinksModel");
 const TempMobileData = sequelize.define(
   "TempMobileData",
   {
-    uploaded_link_id: {
-      type: DataTypes.UUID, // Change to UUID to match uploaded_links.id
-      allowNull: false,
+    linkedin_link_id: {
+      type: DataTypes.INTEGER, // Change to UUID to match uploaded_links.id
+      // allowNull: false,
       primaryKey: true,
-      references: {
-        model: UploadedLink,
-        key: "id",
-      },
-      onUpdate: "CASCADE",
-      onDelete: "CASCADE",
     },
     linkedin_link: {
       type: DataTypes.STRING,
-      allowNull: false,
+      // allowNull: false,
     },
     mobile_number: {
         type: DataTypes.STRING,

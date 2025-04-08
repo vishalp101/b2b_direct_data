@@ -56,10 +56,6 @@ setInterval(async () => {
   }
 }, 60000); // 120000ms = 2 minutes
 
-
-const mobileEnrichmentRoutes = require('./routes/mobileEnrichmentRoutes')
-app.use('/mobileEnrichments', mobileEnrichmentRoutes)
-
 const userRoutes = require('./routes/userRoutes')
 app.use('/users', userRoutes)
 

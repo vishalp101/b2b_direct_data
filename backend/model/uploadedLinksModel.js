@@ -24,8 +24,9 @@ const UploadedLink = sequelize.define("uploaded_links", {
     type: DataTypes.STRING,
     allowNull: true,
   },
-  linkedin_url_id: {
-    type: DataTypes.UUID,
+  linkedin_link_id: {
+    type: DataTypes.INTEGER,
+   
     allowNull: true, // Stores the matched ID from MobileEnrichment
   },
   mobile_number: {
@@ -47,6 +48,7 @@ const UploadedLink = sequelize.define("uploaded_links", {
   enrichment_status: {
     type: DataTypes.STRING,
     allowNull: true, // New column for tracking enrichment status
+ 
   }
 },
 {

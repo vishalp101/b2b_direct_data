@@ -1,25 +1,19 @@
 const { Sequelize } = require("sequelize");
 const UploadedLink = require("../model/uploadedLinksModel");
-const MobileEnrichment = require("../model/mobileEnrichmentModel");
+const MasterUrl = require("../model/masterurlModel");
 const TempMobileData = require("../model/tempMobileDataModel");
 const sequelize = require("../config/db");
 
 exports.saveLinks = async (req, res) => {
   try {
     const { userEmail, links } = req.body;
-
     if (!userEmail || !Array.isArray(links) || links.length === 0) {
       return res.status(400).json({ error: "Invalid input data" });
     }
 
-    // Generate a unique upload ID for this session
-    const uploadId = Date.now(); // Or use a UUID generator
-
-
     const linkObjects = links.map((link) => ({
       user_email: userEmail,
       linkedin_link: link,
-      upload_id: uploadId, // Add the upload ID
     }));
 
     // Bulk insert while ignoring duplicates using updateOnDuplicate
@@ -40,21 +34,21 @@ exports.saveLinks = async (req, res) => {
               WHEN linkedin_link LIKE '%linkedin.com/company%' THEN 'Company Link'
               
               WHEN linkedin_link LIKE '%linkedin.com/pub/%' THEN 'Old_link_check'
-              
+     
               WHEN (linkedin_link NOT LIKE '%linkedin.com/in/%' AND linkedin_link NOT LIKE '%Linkedin.Com/In/%' 
               AND linkedin_link NOT LIKE '%linkedin.com//in/%') THEN 'Junk Link'
               
               ELSE 'ok'
           END;
-
+      
       UPDATE "uploaded_links"
       SET clean_linkedin_link = linkedin_link
       WHERE (linkedin_link_remark IS NULL OR linkedin_link_remark = '' OR linkedin_link_remark = 'ok');
-
+      
       UPDATE "uploaded_links"
       SET clean_linkedin_link = REPLACE(clean_linkedin_link, 'Linkedin.Com/In/', 'linkedin.com/in/')
       WHERE clean_linkedin_link LIKE '%Linkedin.Com/In/%';
-
+      
       UPDATE "uploaded_links"
       SET clean_linkedin_link = REPLACE(clean_linkedin_link, 'linkedin.com//in/', 'linkedin.com/in/')
       WHERE clean_linkedin_link LIKE '%linkedin.com//in/%';
@@ -64,36 +58,36 @@ exports.saveLinks = async (req, res) => {
 
     // Match `clean_linkedin_link` with `mobile_enrichments.linkedin_url` and fetch ID & Mobile Number
     const matchQuery = `
-      UPDATE "uploaded_links" a
-      SET mobile_number = b.mobile_1
-      FROM "MobileEnrichments" b
-      WHERE a.clean_linkedin_link = b.linkedin_url 
-      AND a.mobile_number IS NULL 
-      AND a.linkedin_link_remark = 'ok';
-    `;
+      Update uploaded_links a
+set linkedin_link_id = b.linkedin_link_id
+from masterurls b
+where a.clean_linkedin_link = b.clean_linkedin_link 
+and a.linkedin_link_id is null and a.linkedin_link_remark = 'ok';
+`;
 
     await sequelize.query(matchQuery, { type: Sequelize.QueryTypes.UPDATE });
 
     // Update enrichment status
     const statusQuery = `
-      UPDATE "uploaded_links"
-      SET enrichment_status = 
-          CASE 
-              WHEN mobile_number IS NOT NULL THEN 'mobile_available' 
-              ELSE 'mobile_not_available' 
-          END;
-    `;
+  UPDATE uploaded_links
+SET enrichment_status = CASE
+    WHEN linkedin_link_id IS NOT NULL THEN 'mobile_available'
+    WHEN linkedin_link_id IS NULL THEN 'mobile_not_available'
+    ELSE enrichment_status
+END;
+
+`;
 
     await sequelize.query(statusQuery, { type: Sequelize.QueryTypes.UPDATE });
 
     // Insert remaining links with "mobile_not_available" status into `temp_mobile_data`
     const insertTempDataQuery = `
-      INSERT INTO "temp_mobile_data" (uploaded_link_id, linkedin_link, "createdAt", "updatedAt")
-      SELECT id, clean_linkedin_link, NOW(), NOW()
+      INSERT INTO "temp_mobile_data" (linkedin_link_id, linkedin_link, "createdAt", "updatedAt")
+      SELECT linkedin_link_id, clean_linkedin_link, NOW(), NOW()
       FROM "uploaded_links"
-      WHERE enrichment_status = 'mobile_not_available' 
+      WHERE enrichment_status = 'mobile_available' 
       AND clean_linkedin_link IS NOT NULL
-      ON CONFLICT (uploaded_link_id) DO NOTHING;
+      ON CONFLICT (linkedin_link_id) DO NOTHING;
     `;
 
     await sequelize.query(insertTempDataQuery, {
@@ -118,8 +112,6 @@ exports.saveLinks = async (req, res) => {
       total_uploaded_links: totalLinksResult[0].total_uploaded_links,
       available_mobile_numbers:
         availableMobileResult[0].available_mobile_numbers,
-              upload_id: uploadId, // Return the upload ID
-
     });
   } catch (error) {
     console.error("Error saving links:", error);
@@ -204,7 +196,7 @@ exports.updateUploadedLinks = async (req, res) => {
           person_location = b.person_location,
           linkedin_link_remark = 'ok'
       FROM temp_mobile_data b
-      WHERE a.id = b.uploaded_link_id
+      WHERE a.linkedin_link_id = b.linkedin_link_id
       AND a.enrichment_status = 'mobile_not_available';
     `;
 

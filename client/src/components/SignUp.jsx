@@ -90,12 +90,29 @@ const SignUp = () => {
     drawCaptcha();
   }, []);
 
+  // Email validation regex
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  // Mobile number validation regex (exactly 10 digits)
+  const mobileRegex = /^[0-9]{10}$/;
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     // Field validation
     if (!email || !password || !companyName || !phoneNumber || !captchaInput) {
       setError("All fields are mandatory.");
+      return;
+    }
+
+    // Email format validation
+    if (!emailRegex.test(email)) {
+      setError("Please enter a valid email address.");
+      return;
+    }
+
+    // Mobile number validation
+    if (!mobileRegex.test(phoneNumber)) {
+      setError("Phone number must be exactly 10 digits.");
       return;
     }
 
@@ -134,11 +151,13 @@ const SignUp = () => {
         setCaptchaError("");
         drawCaptcha(); // Refresh CAPTCHA
         // navigate("/login");
-         // Show success confirmation
-      const confirmLogin = window.confirm("Signup successful! Do you want to log in now?");
-      if (confirmLogin) {
-        navigate("/login");
-      }
+        // Show success confirmation
+        const confirmLogin = window.confirm(
+          "Signup successful! Do you want to log in now?"
+        );
+        if (confirmLogin) {
+          navigate("/login");
+        }
       } else if (response.status === 409) {
         setError("User already exists.");
       } else {
